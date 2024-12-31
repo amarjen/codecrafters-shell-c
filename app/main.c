@@ -50,7 +50,7 @@ int main() {
           found = 1;
            }
       }
-      if (!found) { printf("%s: command not found\n", arg);}
+      if (!found) { printf("%s: not found\n", arg);}
     }
 
     else {
