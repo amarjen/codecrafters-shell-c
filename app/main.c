@@ -17,25 +17,37 @@ int main() {
 
     const char s[4] = " ";
     char* cmd;
+    char* arg;
     cmd = strtok(input, s);
-    // char tokenized_input[] = strok(input, " ");
+    arg = strtok(0, s);
 
+    char commands[][20] = {"exit", "echo", "type"};
     char exit_command[]="exit";
     char echo_command[]="echo";
+    char type_command[]="type";
 
+    // EXIT COMMAND
     if (strcmp(cmd, exit_command) == 0) {
       running=0;
       break;
     }
 
-    char* args;
-    args = strtok(0, s);
-    if (strcmp(input, echo_command) == 0) {
-      while (args != 0) {
-        printf("%s ", args);
-        args = strtok(0, s);
+    // ECHO COMMAND
+    if (strcmp(cmd, echo_command) == 0) {
+      while (arg != 0) {
+        printf("%s ", arg);
+        arg = strtok(0, s);
       }
       printf("\n");
+    }
+
+    // TYPE COMMAND
+    if (strcmp(cmd, type_command) == 0) {
+      for (int i=0; i<3; i++) {
+        if (strcmp(arg, commands[i]) == 0) {
+           printf("%s is a shell builtin\n", arg);
+           }
+      } 
     }
 
     else {
