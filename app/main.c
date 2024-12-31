@@ -7,19 +7,24 @@ int main() {
 
   int running = 1;
   while (running) {
-  // Uncomment this block to pass the first stage
-  printf("$ ");
+    printf("$ ");
 
-  // Wait for user input
-  char input[100];
-  fgets(input, 100, stdin);
+    // Wait for user input
+    char input[100];
+    fgets(input, 100, stdin);
 
-  input[strcspn(input, "\n")] = '\0';
+    input[strcspn(input, "\n")] = '\0';
 
-  char quit_command[]="quit";
+    char exit_command[]="exit 0";
 
-  if (strcmp(input, quit_command) == 0) {running=0; break;}
-  else { printf("%s: command not found\n", input); }
+    if (strcmp(input, exit_command) == 0) {
+      running=0;
+      break;
+    }
+
+    else {
+      printf("%s: command not found\n", input);
+    }
   }
   return 0;
 }
