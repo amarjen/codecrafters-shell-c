@@ -43,11 +43,14 @@ int main() {
 
     // TYPE COMMAND
     if (strcmp(cmd, type_command) == 0) {
+      int found = 0;
       for (int i=0; i<3; i++) {
         if (strcmp(arg, commands[i]) == 0) {
            printf("%s is a shell builtin\n", arg);
+          found = 1;
            }
-      } 
+      }
+      if (!found) { printf("%s: command not found\n", cmd);}
     }
 
     else {
