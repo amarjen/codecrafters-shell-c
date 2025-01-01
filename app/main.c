@@ -93,7 +93,7 @@ int main() {
            }
 
         else if (fp != NULL) {
-           printf("fullpath: %s\n", fp);
+           printf("%s is %s\n", fp);
 
       }
         else { printf("%s: not found\n", arg);}
