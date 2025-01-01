@@ -93,7 +93,7 @@ int main() {
            }
 
         else if (fp != NULL) {
-           printf("%s is %s\n", fp);
+           printf("%s is %s\n", arg, fp);
 
       }
         else { printf("%s: not found\n", arg);}
