@@ -18,23 +18,25 @@ int inArray(const char *str, const char *arr[], int size) {
 char* inPath(const char *command) {
 
   char* path = getenv("PATH");
-  const char split[4] = ":";
-  char *fullpath = malloc(100);
+  char *path_copy = strdup(path); 
+  const char split[2] = ":";
   struct stat file_stat;
+  
+  char *token;
+  token = strtok(path_copy, split);
 
-  path = strtok(path, split);
+  while (token != NULL) {
+    char *fullpath = malloc(100);
+    snprintf(fullpath, 100, "%s/%s", token, command);
 
-  while (path != 0) {
-    strcpy(fullpath, path);
-    strcat(fullpath, "/");
-    strcat(fullpath, command);
-    stat(fullpath, &file_stat);
-
-    if ( file_stat.st_mode & S_IXOTH == 1 ) {
+    if ( (stat(fullpath, &file_stat) == 0) && (file_stat.st_mode & S_IXOTH )) {
+      free(path_copy);
       return fullpath;
     }
-    path = strtok(0, split);
+    token = strtok(NULL, split);
+    free(fullpath);
   }
+  free(path_copy);
   return NULL;
 }
 
