@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h> 
+#include <unistd.h>
 
 int inArray(const char *str, const char *arr[], int size) {
   if (str == NULL) {
@@ -57,12 +58,13 @@ int main() {
   // Flush after every printf
   setbuf(stdout, NULL);
 
-  const char *commands[] = {"exit", "echo", "type"};
+  const char *commands[] = {"exit", "echo", "type", "pwd"};
   int commands_size = sizeof(commands) / sizeof(commands[0]);
 
   char exit_command[]="exit";
   char echo_command[]="echo";
   char type_command[]="type";
+  char pwd_command[]="pwd";
 
   int running = 1;
   while (running) {
@@ -116,6 +118,12 @@ int main() {
            free(fp);
       }
         else { printf("%s: not found\n", args);}
+    }
+
+    else if (strcmp(cmd, pwd_command) == 0) {
+      char cwd[1024];
+      getcwd(cwd, sizeof(cwd));
+      printf("%s\n",cwd);
     }
 
     // EXECUTE COMMAND IN PATH
