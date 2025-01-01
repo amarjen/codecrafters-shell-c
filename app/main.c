@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/stat.h> 
 #include <unistd.h>
+#include <errno.h>
 
 int inArray(const char *str, const char *arr[], int size) {
   if (str == NULL) {
@@ -58,13 +59,14 @@ int main() {
   // Flush after every printf
   setbuf(stdout, NULL);
 
-  const char *commands[] = {"exit", "echo", "type", "pwd"};
+  const char *commands[] = {"exit", "echo", "type", "pwd", "cd"};
   int commands_size = sizeof(commands) / sizeof(commands[0]);
 
   char exit_command[]="exit";
   char echo_command[]="echo";
   char type_command[]="type";
   char pwd_command[]="pwd";
+  char cd_command[]="cd";
 
   int running = 1;
   while (running) {
@@ -124,6 +126,14 @@ int main() {
       char cwd[1024];
       getcwd(cwd, sizeof(cwd));
       printf("%s\n",cwd);
+    }
+
+    else if (strcmp(cmd, cd_command) == 0) {
+      int result = chdir(args);
+
+      if ((result != 0) && (errno == ENOENT)) {
+        printf("cd: %s: No such file or directory\n", args);
+      }
     }
 
     // EXECUTE COMMAND IN PATH
