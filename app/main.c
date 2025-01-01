@@ -59,6 +59,9 @@ int main() {
   // Flush after every printf
   setbuf(stdout, NULL);
 
+  const char* HOME = getenv("HOME");
+  const char HOME_ALIAS[2] = "~";
+
   const char *commands[] = {"exit", "echo", "type", "pwd", "cd"};
   int commands_size = sizeof(commands) / sizeof(commands[0]);
 
@@ -129,6 +132,7 @@ int main() {
     }
 
     else if (strcmp(cmd, cd_command) == 0) {
+      if (!strcmp(args, "~")) {strcpy(args, HOME);}
       int result = chdir(args);
       if ((result != 0) && (errno == ENOENT)) {
         printf("cd: %s: No such file or directory\n", args);
