@@ -20,7 +20,7 @@ int inArray(const char *str, const char *arr[], int size) {
 char* inPath(const char *command) {
 
   char* path = getenv("PATH");
-  char *path_copy = strdup(path); 
+  char *path_copy = strndup(path, strlen(path)); 
   const char split[2] = ":";
   struct stat file_stat;
   
@@ -43,24 +43,20 @@ char* inPath(const char *command) {
 }
 
 void trim(char *s) {
-  
-      // Two pointers initially at the beginning
+    // Two pointers initially at the beginning
     int i = 0, j = 0;
 
     // Skip leading spaces
     while (s[i] == ' ') i++; 
 
     // Shift the characters of string to remove
-      // leading spaces
+    // leading spaces
     while (s[j++] = s[i++]);
 }
 
 int main() {
   // Flush after every printf
   setbuf(stdout, NULL);
-
-  const char* HOME = getenv("HOME");
-  const char HOME_ALIAS[2] = "~";
 
   const char *commands[] = {"exit", "echo", "type", "pwd", "cd"};
   int commands_size = sizeof(commands) / sizeof(commands[0]);
@@ -106,6 +102,12 @@ int main() {
 
     // ECHO COMMAND
     else if (strcmp(cmd, echo_command) == 0) {
+      char target = '\'';
+      const char* result = args;
+      while((result = strchr(result, target))!=NULL) {
+        printf("Found '%c' starting at '%s'\n", target, result);
+        ++result;
+      }
       printf("%s\n", args);
     }
 
@@ -132,7 +134,10 @@ int main() {
     }
 
     else if (strcmp(cmd, cd_command) == 0) {
-      if (!strcmp(args, "~")) {strcpy(args, HOME);}
+      if (!strcmp(args, "~")) {
+        strcpy(args, getenv("HOME"));
+      }
+
       int result = chdir(args);
       if ((result != 0) && (errno == ENOENT)) {
         printf("cd: %s: No such file or directory\n", args);
