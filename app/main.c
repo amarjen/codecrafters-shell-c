@@ -128,7 +128,6 @@ int main() {
       else {
         snprintf(fullCommand, 100, "%s\n",cmd);
       }
-      printf("%s\n",fullCommand);
       int returnCode = system(fullCommand);
       free(fullCommand);
     }
