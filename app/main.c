@@ -130,7 +130,6 @@ int main() {
 
     else if (strcmp(cmd, cd_command) == 0) {
       int result = chdir(args);
-
       if ((result != 0) && (errno == ENOENT)) {
         printf("cd: %s: No such file or directory\n", args);
       }
