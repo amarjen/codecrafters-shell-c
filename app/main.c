@@ -1,5 +1,7 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h> 
 
 int inArray(const char *str, const char *arr[], int size) {
   if (str == NULL) {
@@ -13,12 +15,40 @@ int inArray(const char *str, const char *arr[], int size) {
   return 0; // Not Found
 }
 
+char* inPath(const char *command) {
+
+  char* path = getenv("PATH");
+  const char split[4] = ":";
+  static char fullpath[100];
+  struct stat file_stat;
+
+  path = strtok(path, split);
+
+  while (path != 0) {
+    strcpy(fullpath, path);
+    strcat(fullpath, "/");
+    strcat(fullpath, command);
+    stat(fullpath, &file_stat);
+
+    if ( file_stat.st_mode & S_IXOTH == 1 ) {
+      printf("is Exec: %s\n", fullpath);
+      return fullpath;
+    }
+    path = strtok(0, split);
+  }
+  return NULL;
+}
+
 int main() {
   // Flush after every printf
   setbuf(stdout, NULL);
 
   const char *commands[] = {"exit", "echo", "type"};
   int commands_size = sizeof(commands) / sizeof(commands[0]);
+
+  char exit_command[]="exit";
+  char echo_command[]="echo";
+  char type_command[]="type";
 
   int running = 1;
   while (running) {
@@ -36,9 +66,7 @@ int main() {
     cmd = strtok(input, s);
     arg = strtok(0, s);
 
-    char exit_command[]="exit";
-    char echo_command[]="echo";
-    char type_command[]="type";
+    if (cmd == NULL) { continue; }
 
     // EXIT COMMAND
     if (strcmp(cmd, exit_command) == 0) {
@@ -57,9 +85,17 @@ int main() {
 
     // TYPE COMMAND
     else if (strcmp(cmd, type_command) == 0) {
+        char *fp;
+        strcpy(fp, inPath(arg));
+
         if (inArray(arg, commands, commands_size) == 1) {
            printf("%s is a shell builtin\n", arg);
            }
+
+        else if (fp != NULL) {
+           printf("fullpath: %s\n", fp);
+
+      }
         else { printf("%s: not found\n", arg);}
     }
 
