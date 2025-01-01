@@ -1,9 +1,27 @@
 #include <stdio.h>
 #include <string.h>
 
+int inArray(const char *str, const char *arr[], int size)
+{
+  if (str == NULL) {
+    return 0;
+  }
+  for (int i=0; i<size; i++)
+  {
+    if (strcmp(str, arr[i]) == 0)
+    {
+      return 1; // Found
+    }
+  }
+  return 0; // Not Found
+}
+
 int main() {
   // Flush after every printf
   setbuf(stdout, NULL);
+
+  const char *commands[] = {"exit", "echo", "type"};
+  int commands_size = sizeof(commands) / sizeof(commands[0]);
 
   int running = 1;
   while (running) {
@@ -21,7 +39,6 @@ int main() {
     cmd = strtok(input, s);
     arg = strtok(0, s);
 
-    char commands[][20] = {"exit", "echo", "type"};
     char exit_command[]="exit";
     char echo_command[]="echo";
     char type_command[]="type";
@@ -33,7 +50,7 @@ int main() {
     }
 
     // ECHO COMMAND
-    if (strcmp(cmd, echo_command) == 0) {
+    else if (strcmp(cmd, echo_command) == 0) {
       while (arg != 0) {
         printf("%s ", arg);
         arg = strtok(0, s);
@@ -42,15 +59,11 @@ int main() {
     }
 
     // TYPE COMMAND
-    if (strcmp(cmd, type_command) == 0) {
-      int found = 0;
-      for (int i=0; i<3; i++) {
-        if (strcmp(arg, commands[i]) == 0) {
+    else if (strcmp(cmd, type_command) == 0) {
+        if (inArray(arg, commands, commands_size) == 1) {
            printf("%s is a shell builtin\n", arg);
-          found = 1;
            }
-      }
-      if (!found) { printf("%s: not found\n", arg);}
+        else { printf("%s: not found\n", arg);}
     }
 
     else {
