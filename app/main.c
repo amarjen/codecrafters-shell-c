@@ -19,7 +19,7 @@ char* inPath(const char *command) {
 
   char* path = getenv("PATH");
   const char split[4] = ":";
-  static char fullpath[100];
+  char *fullpath = malloc(100);
   struct stat file_stat;
 
   path = strtok(path, split);
@@ -31,7 +31,6 @@ char* inPath(const char *command) {
     stat(fullpath, &file_stat);
 
     if ( file_stat.st_mode & S_IXOTH == 1 ) {
-      printf("is Exec: %s\n", fullpath);
       return fullpath;
     }
     path = strtok(0, split);
@@ -85,8 +84,7 @@ int main() {
 
     // TYPE COMMAND
     else if (strcmp(cmd, type_command) == 0) {
-        char *fp;
-        strcpy(fp, inPath(arg));
+        char *fp = inPath(arg);
 
         if (inArray(arg, commands, commands_size) == 1) {
            printf("%s is a shell builtin\n", arg);
@@ -97,6 +95,7 @@ int main() {
 
       }
         else { printf("%s: not found\n", arg);}
+      free(fp);
     }
 
     else {
