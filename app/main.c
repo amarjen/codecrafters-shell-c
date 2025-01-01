@@ -54,6 +54,45 @@ void trim(char *s) {
     while (s[j++] = s[i++]);
 }
 
+int tokenize(char **tokens, char *str) {
+    char separator[2] = " ";
+    char* next_token;
+    tokens[0] = strtok(str, separator);
+    next_token = strtok(0, separator);
+    int i=1;
+    while (next_token != 0) {
+      tokens[i] = malloc(strlen(next_token)+1);
+      strcpy(tokens[i], next_token);
+      next_token = strtok(0, separator);
+      i++;
+    }
+    return i;
+}
+
+static char *util_cat(char *dest, char *end, const char *str)
+{
+    while (dest < end && *str)
+        *dest++ = *str++;
+    return dest;
+}
+
+size_t join_str(char *out_string, size_t out_bufsz, const char *delim, char **chararr)
+{
+    // saltar el primer elemento para que queden solo los argumentos
+    chararr++;
+  
+    char *ptr = out_string;
+    char *strend = out_string + out_bufsz;
+    while (ptr < strend && *chararr)
+    {
+        ptr = util_cat(ptr, strend, *chararr);
+        chararr++;
+        if (*chararr)
+            ptr = util_cat(ptr, strend, delim);
+    }
+    return ptr - out_string;
+}
+
 int main() {
   // Flush after every printf
   setbuf(stdout, NULL);
@@ -67,6 +106,7 @@ int main() {
   char pwd_command[]="pwd";
   char cd_command[]="cd";
 
+  char s[2] = " ";
   int running = 1;
   while (running) {
     printf("$ ");
@@ -75,23 +115,16 @@ int main() {
     char input[100];
     fgets(input, 100, stdin);
 
-    input[strcspn(input, "\n")] = ' ';
+    input[strcspn(input, "\n")] = '\0';
 
-    const char s[4] = " ";
+    char **argv = (char**)malloc(5*sizeof(char*));
+    int argc = tokenize(argv, input);
+
+    char *args = malloc(argc*sizeof(char*)+argc);
+    join_str(args, argc * sizeof(char*), s, argv);
+
     char* cmd;
-    char* arg;
-    char args[1024] = "";
-
-    cmd = strtok(input, s);
-    arg = strtok(0, s);
-
-    while (arg != 0) {
-      strcat(args, " ");
-      strcat(args, arg);
-      arg = strtok(0, s);
-    }
-    trim(args);
-    
+    cmd = argv[0];
     if (cmd == NULL) { continue; }
 
     // EXIT COMMAND
@@ -161,6 +194,8 @@ int main() {
     else {
       printf("%s: command not found\n", input);
     }
+    free(argv);
+    free(args);
   }
   return 0;
 }
