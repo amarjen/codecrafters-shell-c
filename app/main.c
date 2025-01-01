@@ -40,6 +40,19 @@ char* inPath(const char *command) {
   return NULL;
 }
 
+void trim(char *s) {
+  
+      // Two pointers initially at the beginning
+    int i = 0, j = 0;
+
+    // Skip leading spaces
+    while (s[i] == ' ') i++; 
+
+    // Shift the characters of string to remove
+      // leading spaces
+    while (s[j++] = s[i++]);
+}
+
 int main() {
   // Flush after every printf
   setbuf(stdout, NULL);
@@ -64,9 +77,18 @@ int main() {
     const char s[4] = " ";
     char* cmd;
     char* arg;
+    char args[1024] = "";
+
     cmd = strtok(input, s);
     arg = strtok(0, s);
 
+    while (arg != 0) {
+      strcat(args, " ");
+      strcat(args, arg);
+      arg = strtok(0, s);
+    }
+    trim(args);
+    
     if (cmd == NULL) { continue; }
 
     // EXIT COMMAND
@@ -77,27 +99,38 @@ int main() {
 
     // ECHO COMMAND
     else if (strcmp(cmd, echo_command) == 0) {
-      while (arg != 0) {
-        printf("%s ", arg);
-        arg = strtok(0, s);
-      }
-      printf("\n");
+      printf("%s\n", args);
     }
 
     // TYPE COMMAND
     else if (strcmp(cmd, type_command) == 0) {
-        char *fp = inPath(arg);
 
-        if (inArray(arg, commands, commands_size) == 1) {
-           printf("%s is a shell builtin\n", arg);
+        if (inArray(args, commands, commands_size) == 1) {
+           printf("%s is a shell builtin\n", args);
            }
 
-        else if (fp != NULL) {
-           printf("%s is %s\n", arg, fp);
-
+        else if (inPath(args) != NULL) {
+           char* fp;
+           fp = inPath(args);
+           printf("%s is %s\n", args, fp);
+           free(fp);
       }
-        else { printf("%s: not found\n", arg);}
-      free(fp);
+        else { printf("%s: not found\n", args);}
+    }
+
+    // EXECUTE COMMAND IN PATH
+    else if ( inPath(cmd) != NULL ) {
+
+      char* fullCommand = malloc(100);
+      if (args != NULL) {
+        snprintf(fullCommand, 100, "%s %s\n",cmd, args);
+      }
+      else {
+        snprintf(fullCommand, 100, "%s\n",cmd);
+      }
+      printf("%s\n",fullCommand);
+      int returnCode = system(fullCommand);
+      free(fullCommand);
     }
 
     else {
