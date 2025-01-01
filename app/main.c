@@ -1,8 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 
-int inArray(const char *str, const char *arr[], int size)
-{
+int inArray(const char *str, const char *arr[], int size) {
   if (str == NULL) {
     return 0;
   }
