@@ -265,7 +265,7 @@ int main() {
       if (argc == 0) {printf("You need to specify a directory\n");
       }
       else {
-        if (!strcmp(args, "~")) {
+        if (!strcmp(argv[0], "~")) {
           strcpy(args, getenv("HOME"));
         }
 
