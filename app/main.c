@@ -211,6 +211,7 @@ int main() {
         strcat(args_quotes, "'");
         strcat(args_quotes, argv[i] );
         strcat(args_quotes, "'");
+        strcat(args_quotes, " ");
       }
     }
     else {
