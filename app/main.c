@@ -10,7 +10,6 @@
 #define MAX_ARG_LEN 256 // Maximum length of each argument
 #define DEBUG 0 // Change to 1 to verbose debug prints
 
-
 int inArray(const char *str, const char *arr[], int size) {
   if (str == NULL) {
     return 0;
@@ -185,6 +184,8 @@ int main() {
   char cd_command[]="cd";
 
   char s[2] = " ";
+  char quote[2] = "'";
+
   int running = 1;
   while (running) {
     printf("$ ");
@@ -197,6 +198,7 @@ int main() {
 
     char **argv = (char**)malloc(5*sizeof(char*));
     char *args = calloc(8, 128);
+    char *args_quotes = calloc(8, 128);
     int argc = 0;
     char cmd[256];
  
@@ -204,16 +206,23 @@ int main() {
 
     if (argc > 0) {
       join_str(args, 1024, s, argv);
+
+      for (int i=0; i<argc; i++){
+        strcat(args_quotes, "'");
+        strcat(args_quotes, argv[i] );
+        strcat(args_quotes, "'");
+      }
     }
     else {
       args = NULL;
+      args_quotes = NULL;
     }
 
     if (DEBUG) {
       for (int i=0; i<argc; i++) {
         printf("argv %d: %s\n", i, argv[i]);
       }
-      printf("cmd: %s\nargc: %d\nargs: %s\n---\n", cmd, argc, args);
+      printf("cmd: %s\nargc: %d\nargs: %s\nargsq: %s\n---\n", cmd, argc, args,args_quotes);
       }
     if (cmd == NULL) { continue; }
 
@@ -270,8 +279,8 @@ int main() {
     else if ( inPath(cmd) != NULL ) {
 
       char* fullCommand = malloc(100);
-      if (args != NULL) {
-        snprintf(fullCommand, 100, "%s %s\n",cmd, args);
+      if (args_quotes != NULL) {
+        snprintf(fullCommand, 100, "%s %s\n",cmd, args_quotes);
       }
       else {
         snprintf(fullCommand, 100, "%s\n",cmd);
@@ -283,10 +292,7 @@ int main() {
     else {
       printf("%s: command not found\n", input);
     }
-    // Free each string
-    // for (int i = 0; i < argc; i++) {
-    //     free(argv[i]);
-    // }
+
     free(argv);
     free(args);
   }
