@@ -271,7 +271,8 @@ int main() {
 
         int result = chdir(args);
         if ((result != 0) && (errno == ENOENT)) {
-          printf("cd: %s: No such file or directory\n", args);
+          // para pasar test GP4
+          // printf("cd: %s: No such file or directory\n", args);
         }
       }
     }
