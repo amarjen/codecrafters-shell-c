@@ -4,6 +4,12 @@
 #include <sys/stat.h> 
 #include <unistd.h>
 #include <errno.h>
+#include <ctype.h>
+
+#define MAX_ARGS 100    // Maximum number of arguments
+#define MAX_ARG_LEN 256 // Maximum length of each argument
+#define DEBUG 0 // Change to 1 to verbose debug prints
+
 
 int inArray(const char *str, const char *arr[], int size) {
   if (str == NULL) {
@@ -78,9 +84,6 @@ static char *util_cat(char *dest, char *end, const char *str)
 
 size_t join_str(char *out_string, size_t out_bufsz, const char *delim, char **chararr)
 {
-    // saltar el primer elemento para que queden solo los argumentos
-    chararr++;
-  
     char *ptr = out_string;
     char *strend = out_string + out_bufsz;
     while (ptr < strend && *chararr)
@@ -92,6 +95,81 @@ size_t join_str(char *out_string, size_t out_bufsz, const char *delim, char **ch
     }
     return ptr - out_string;
 }
+void parse_line(const char *line, char *command_output, char **args_output, int *arg_count) {
+    const char *ptr = line; // Pointer to traverse the input string
+    char *arg = NULL;
+    int index = 0;
+
+    // Skip leading spaces
+    while (*ptr && isspace((unsigned char)*ptr)) {
+        ptr++;
+    }
+
+    // Extract the command (first token)
+    while (*ptr && !isspace((unsigned char)*ptr)) {
+        *command_output++ = *ptr++;
+    }
+    *command_output = '\0'; // Null-terminate the command string
+
+    // Parse the arguments
+    while (*ptr) {
+        // Skip leading spaces
+        while (*ptr && isspace((unsigned char)*ptr)) {
+            ptr++;
+        }
+
+        if (*ptr == '\0') {
+            break; // End of string
+        }
+
+        if (*ptr == '\'') { // Handle quoted argument
+            ptr++; // Skip the opening single quote
+            arg = malloc(MAX_ARG_LEN);
+            int arg_pos = 0;
+
+            while (*ptr && *ptr != '\'') {
+                if (arg_pos < MAX_ARG_LEN - 1) {
+                    arg[arg_pos++] = *ptr++;
+                } else {
+                    fprintf(stderr, "Argument exceeds maximum length\n");
+                    free(arg);
+                    return;
+                }
+            }
+
+            if (*ptr == '\'') {
+                ptr++; // Skip the closing single quote
+            }
+            arg[arg_pos] = '\0';
+        } else { // Handle unquoted argument
+            arg = malloc(MAX_ARG_LEN);
+            int arg_pos = 0;
+
+            while (*ptr && !isspace((unsigned char)*ptr)) {
+                if (arg_pos < MAX_ARG_LEN - 1) {
+                    arg[arg_pos++] = *ptr++;
+                } else {
+                    fprintf(stderr, "Argument exceeds maximum length\n");
+                    free(arg);
+                    return;
+                }
+            }
+            arg[arg_pos] = '\0';
+        }
+
+        // Add the argument to the output array
+        if (index < MAX_ARGS) {
+            args_output[index++] = arg;
+        } else {
+            fprintf(stderr, "Too many arguments\n");
+            free(arg);
+            return;
+        }
+    }
+
+    *arg_count = index; // Update the argument count
+}
+
 
 int main() {
   // Flush after every printf
@@ -118,13 +196,25 @@ int main() {
     input[strcspn(input, "\n")] = '\0';
 
     char **argv = (char**)malloc(5*sizeof(char*));
-    int argc = tokenize(argv, input);
+    char *args = calloc(8, 128);
+    int argc = 0;
+    char cmd[256];
+ 
+    parse_line(input, cmd, argv, &argc);
 
-    char *args = malloc(argc*sizeof(char*)+argc);
-    join_str(args, argc * sizeof(char*), s, argv);
+    if (argc > 0) {
+      join_str(args, 1024, s, argv);
+    }
+    else {
+      args = NULL;
+    }
 
-    char* cmd;
-    cmd = argv[0];
+    if (DEBUG) {
+      for (int i=0; i<argc; i++) {
+        printf("argv %d: %s\n", i, argv[i]);
+      }
+      printf("cmd: %s\nargc: %d\nargs: %s\n---\n", cmd, argc, args);
+      }
     if (cmd == NULL) { continue; }
 
     // EXIT COMMAND
@@ -135,31 +225,26 @@ int main() {
 
     // ECHO COMMAND
     else if (strcmp(cmd, echo_command) == 0) {
-      char target = '\'';
-      const char* result = args;
-      while((result = strchr(result, target))!=NULL) {
-        printf("Found '%c' starting at '%s'\n", target, result);
-        ++result;
-      }
       printf("%s\n", args);
     }
 
     // TYPE COMMAND
     else if (strcmp(cmd, type_command) == 0) {
 
-        if (inArray(args, commands, commands_size) == 1) {
-           printf("%s is a shell builtin\n", args);
+        if (inArray(argv[0], commands, commands_size) == 1) {
+           printf("%s is a shell builtin\n", argv[0]);
            }
 
-        else if (inPath(args) != NULL) {
+        else if (inPath(argv[0]) != NULL) {
            char* fp;
-           fp = inPath(args);
-           printf("%s is %s\n", args, fp);
+           fp = inPath(argv[0]);
+           printf("%s is %s\n", argv[0], fp);
            free(fp);
       }
-        else { printf("%s: not found\n", args);}
+        else { printf("%s: not found\n", argv[0]);}
     }
 
+    // PWD COMMAND
     else if (strcmp(cmd, pwd_command) == 0) {
       char cwd[1024];
       getcwd(cwd, sizeof(cwd));
@@ -167,13 +252,17 @@ int main() {
     }
 
     else if (strcmp(cmd, cd_command) == 0) {
-      if (!strcmp(args, "~")) {
-        strcpy(args, getenv("HOME"));
+      if (argc == 0) {printf("You need to specify a directory\n");
       }
+      else {
+        if (!strcmp(args, "~")) {
+          strcpy(args, getenv("HOME"));
+        }
 
-      int result = chdir(args);
-      if ((result != 0) && (errno == ENOENT)) {
-        printf("cd: %s: No such file or directory\n", args);
+        int result = chdir(args);
+        if ((result != 0) && (errno == ENOENT)) {
+          printf("cd: %s: No such file or directory\n", args);
+        }
       }
     }
 
@@ -194,6 +283,10 @@ int main() {
     else {
       printf("%s: command not found\n", input);
     }
+    // Free each string
+    // for (int i = 0; i < argc; i++) {
+    //     free(argv[i]);
+    // }
     free(argv);
     free(args);
   }
