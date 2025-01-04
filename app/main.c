@@ -54,10 +54,11 @@ int main() {
     if (argc > 1) {
       join_str(args, 1024, s, argv);
 
+      // TODO: muy sucio
       for (int i=1; i<argc; i++){
-        strcat(args_quotes, "'");
+        strcat(args_quotes, "\"");
         strcat(args_quotes, argv[i] );
-        strcat(args_quotes, "'");
+        strcat(args_quotes, "\"");
         strcat(args_quotes, " ");
       }
     }
