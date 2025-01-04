@@ -25,7 +25,7 @@ int parse_tokens(const char *input, char **tokens, int *token_count) {
             is_escaped = 1;
         } else if (c == '\'' && !in_double_quote) { // Single quote toggle
             in_single_quote = !in_single_quote;
-        } else if (c == '"' ){// && !in_single_quote) { // Double quote toggle
+        } else if (c == '"'  && !in_single_quote) { // Double quote toggle
             in_double_quote = !in_double_quote;
         } else if (isspace((unsigned char)c) && !in_single_quote && !in_double_quote) { // Token boundary
             if (buffer_pos > 0) {

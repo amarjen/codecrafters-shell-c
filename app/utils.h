@@ -134,11 +134,12 @@ int parse_tokens(const char *input, char **tokens, int *token_count) {
 
     while (*input) {
         char c = *input++;
+        char escape_c = '\\';
 
         if (is_escaped) { // Handle escaped character
             buffer[buffer_pos++] = c;
             is_escaped = 0;
-        } else if (c == '\\') { // Escape character
+        } else if (c == '\\' && !in_single_quote && !in_double_quote) { // Escape character
             is_escaped = 1;
         } else if (c == '\'' && !in_double_quote) { // Single quote toggle
             in_single_quote = !in_single_quote;
