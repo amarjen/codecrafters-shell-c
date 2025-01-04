@@ -108,6 +108,7 @@ static char *util_cat(char *dest, char *end, const char *str)
 
 size_t join_str(char *out_string, size_t out_bufsz, const char *delim, char **chararr)
 {
+    chararr++;
     char *ptr = out_string;
     char *strend = out_string + out_bufsz;
     while (ptr < strend && *chararr)
@@ -157,10 +158,11 @@ void parse_line(const char *line, char *command_output, char **args_output, int 
                 } else {
                     fprintf(stderr, "Argument exceeds maximum length\n");
                     free(arg);
-                    return;
-                }
+                    return; }
             }
-
+            /*if (arg_pos==0) { // comillas vacias */ /*  arg[arg_pos++] = " ";*/
+            /*}*/
+            /**/
             if (*ptr == '\'') {
                 ptr++; // Skip the closing single quote
             }
@@ -192,6 +194,65 @@ void parse_line(const char *line, char *command_output, char **args_output, int 
     }
 
     *arg_count = index; // Update the argument count
+}
+
+#define MAX_TOKENS 100 // Maximum number of tokens
+#define MAX_TOKEN_LEN 256 // Maximum token length
+
+int parse_tokens(const char *input, char **tokens, int *token_count) {
+    int in_single_quote = 0;
+    int in_double_quote = 0;
+    int is_escaped = 0;
+    char buffer[MAX_TOKEN_LEN];
+    int buffer_pos = 0;
+    int token_index = 0;
+
+    while (*input) {
+        char c = *input++;
+
+        if (is_escaped) { // Handle escaped character
+            buffer[buffer_pos++] = c;
+            is_escaped = 0;
+        } else if (c == '\\') { // Escape character
+            is_escaped = 1;
+        } else if (c == '\'' && !in_double_quote) { // Single quote toggle
+            in_single_quote = !in_single_quote;
+        } else if (c == '"' && !in_single_quote) { // Double quote toggle
+            in_double_quote = !in_double_quote;
+        } else if (isspace((unsigned char)c) && !in_single_quote && !in_double_quote) { // Token boundary
+            if (buffer_pos > 0) {
+                buffer[buffer_pos] = '\0'; // Null-terminate the token
+                tokens[token_index++] = strdup(buffer); // Save the token
+                buffer_pos = 0;
+
+                if (token_index >= MAX_TOKENS) {
+                    fprintf(stderr, "Error: Too many tokens\n");
+                    return -1;
+                }
+            }
+        } else { // Regular character
+            buffer[buffer_pos++] = c;
+            if (buffer_pos >= MAX_TOKEN_LEN) {
+                fprintf(stderr, "Error: Token exceeds maximum length\n");
+                return -1;
+            }
+        }
+    }
+
+    // Save the last token if any
+    if (buffer_pos > 0) {
+        buffer[buffer_pos] = '\0';
+        tokens[token_index++] = strdup(buffer);
+    }
+
+    // Check for unmatched quotes
+    if (in_single_quote || in_double_quote) {
+        fprintf(stderr, "Error: Unmatched quote\n");
+        return -1;
+    }
+
+    *token_count = token_index;
+    return 0;
 }
 
 

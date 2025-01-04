@@ -41,18 +41,20 @@ int main() {
 
     input[strcspn(input, "\n")] = '\0';
 
-    char **argv = (char**)malloc(5*sizeof(char*));
-    char *args = ecalloc(8, 128);
-    char *args_quotes = ecalloc(8, 128);
+    char **argv = (char**)ecalloc(5, sizeof(char*));
+    char *args = ecalloc(8, 1024);
+    char *args_quotes = ecalloc(8, 1024);
     int argc = 0;
     char cmd[256];
  
-    parse_line(input, cmd, argv, &argc);
+    //parse_line(input, cmd, argv, &argc);
+    parse_tokens(input, argv, &argc);
+    strcpy(cmd, argv[0]);
 
-    if (argc > 0) {
+    if (argc > 1) {
       join_str(args, 1024, s, argv);
 
-      for (int i=0; i<argc; i++){
+      for (int i=1; i<argc; i++){
         strcat(args_quotes, "'");
         strcat(args_quotes, argv[i] );
         strcat(args_quotes, "'");
@@ -90,17 +92,17 @@ int main() {
       }
       else {
 
-        if (inArray(argv[0], commands, commands_size) == 1) {
-           printf("%s is a shell builtin\n", argv[0]);
+        if (inArray(argv[1], commands, commands_size) == 1) {
+           printf("%s is a shell builtin\n", argv[1]);
            }
 
-        else if (inPath(argv[0]) != NULL) {
+        else if (inPath(argv[1]) != NULL) {
            char* fp;
-           fp = inPath(argv[0]);
-           printf("%s is %s\n", argv[0], fp);
+           fp = inPath(argv[1]);
+           printf("%s is %s\n", argv[1], fp);
            free(fp);
       }
-        else { printf("%s: not found\n", argv[0]);}
+        else { printf("%s: not found\n", argv[1]);}
       }   }
 
     // PWD COMMAND
@@ -114,7 +116,7 @@ int main() {
       if (argc == 0) {printf("You need to specify a directory\n");
       }
       else {
-        if (!strcmp(argv[0], "~")) {
+        if (!strcmp(argv[1], "~")) {
           strcpy(args, getenv("HOME"));
         }
 
