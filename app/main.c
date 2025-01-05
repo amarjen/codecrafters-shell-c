@@ -39,32 +39,26 @@ int main() {
     fgets(input, 100, stdin);
     printf(CRESET);
 
+    if (input[0]=='\n') {continue;}
     input[strcspn(input, "\n")] = '\0';
 
-    char **argv = (char**)ecalloc(5, sizeof(char*));
+    char **argv = (char**)ecalloc(10, sizeof(char*));
     char *args = ecalloc(8, 1024);
-    char *args_quotes = ecalloc(8, 1024);
+    char args_quotes[1024] = {0};
     int argc = 0;
     char cmd[256];
  
-    //parse_line(input, cmd, argv, &argc);
     parse_tokens(input, argv, &argc);
     strcpy(cmd, argv[0]);
 
     if (argc > 1) {
       join_str(args, 1024, s, argv);
-
-      // TODO: muy sucio
-      for (int i=1; i<argc; i++){
-        strcat(args_quotes, "\"");
-        strcat(args_quotes, argv[i] );
-        strcat(args_quotes, "\"");
-        strcat(args_quotes, " ");
-      }
+      expandArgs(argv, argc, args_quotes);
+      // quoteStr(args_quotes);
     }
     else {
       args = NULL;
-      args_quotes = NULL;
+      // args_quotes = NULL;
     }
 
     if (DEBUG) {
@@ -73,7 +67,6 @@ int main() {
       }
       printf("cmd: %s\nargc: %d\nargs: %s\nargsq: %s\n---\n", cmd, argc, args,args_quotes);
       }
-    if (cmd == NULL) { continue; }
 
     // EXIT COMMAND
     if (strcmp(cmd, exit_command) == 0) {
@@ -84,7 +77,10 @@ int main() {
     // ECHO COMMAND
     else if (strcmp(cmd, echo_command) == 0) {
       if (args != NULL) {
-      printf("%s\n", args);}
+      printf("%s\n", args);
+
+      }
+      
     }
 
     // TYPE COMMAND
@@ -113,6 +109,7 @@ int main() {
       printf("%s\n",cwd);
     }
 
+    // CD COMMAND
     else if (strcmp(cmd, cd_command) == 0) {
       if (argc == 0) {printf("You need to specify a directory\n");
       }

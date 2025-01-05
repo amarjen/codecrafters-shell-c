@@ -125,28 +125,61 @@ size_t join_str(char *out_string, size_t out_bufsz, const char *delim, char **ch
 #define MAX_TOKEN_LEN 256 // Maximum token length
 
 int parse_tokens(const char *input, char **tokens, int *token_count) {
+    // https://www.gnu.org/software/bash/manual/bash.html#Quoting
+    int is_escaped = 0;
     int in_single_quote = 0;
     int in_double_quote = 0;
-    int is_escaped = 0;
+
     char buffer[MAX_TOKEN_LEN];
     int buffer_pos = 0;
     int token_index = 0;
 
     while (*input) {
         char c = *input++;
-        char escape_c = '\\';
 
         if (is_escaped) { // Handle escaped character
             buffer[buffer_pos++] = c;
             is_escaped = 0;
-        } else if (c == '\\' && !in_single_quote && !in_double_quote) { // Escape character
-            is_escaped = 1;
-        } else if (c == '\'' && !in_double_quote) { // Single quote toggle
+        }
+
+        // SINGLE QUOTES
+        else if (c == '\'' && !in_double_quote) { // Single quote toggle
             in_single_quote = !in_single_quote;
-        } else if (c == '"' && !in_single_quote) { // Double quote toggle
+        }
+
+        // DOUBLE QUOTES
+        else if (c == '"' && !in_single_quote) { // Double quote toggle
             in_double_quote = !in_double_quote;
-        } else if (isspace((unsigned char)c) && !in_single_quote && !in_double_quote) { // Token boundary
-            if (buffer_pos > 0) {
+        }
+
+        else if (in_double_quote && c == '\\') { 
+          // Enclosing backslashes within double quotes " preserves
+          // the special meaning of the backslash, only when it is followed by \, $, " or newline.
+
+           char next_c = *input++; // mirar el siguiente y retroceder
+           if (next_c == '\\' || next_c == '"' ) {
+             buffer[buffer_pos++] = next_c;
+           } 
+           else if (next_c != '$' ||  next_c != 'n') {
+             /*buffer[buffer_pos++] = c;*/
+             buffer[buffer_pos++] = '\\';
+             buffer[buffer_pos++] = next_c;
+             /**input++;*/
+           }
+           else {
+             *input--;
+             buffer[buffer_pos++] = c;
+           /*is_escaped = 1;*/
+           }
+        }
+
+        else if (c == '\\' && !in_single_quote && !in_double_quote) { // Escape character
+            is_escaped = 1;
+        }
+
+
+        else if (isspace((unsigned char)c) && !in_single_quote && !in_double_quote) { // Token boundary
+            if ( buffer_pos > 0) {
                 buffer[buffer_pos] = '\0'; // Null-terminate the token
                 tokens[token_index++] = strdup(buffer); // Save the token
                 buffer_pos = 0;
@@ -156,7 +189,9 @@ int parse_tokens(const char *input, char **tokens, int *token_count) {
                     return -1;
                 }
             }
-        } else { // Regular character
+        }
+
+        else { // Regular character
             buffer[buffer_pos++] = c;
             if (buffer_pos >= MAX_TOKEN_LEN) {
                 fprintf(stderr, "Error: Token exceeds maximum length\n");
@@ -181,4 +216,62 @@ int parse_tokens(const char *input, char **tokens, int *token_count) {
     return 0;
 }
 
+void quoteStr(char *str) {
+    size_t len = strlen(str);
+
+    // Shift the string right to make space for the opening quote
+    for (size_t i = len; i > 0; i--) {
+        str[i] = str[i - 1];
+    }
+
+    str[0] = '"';
+    str[len + 1] = '"';
+    str[len + 2] = '\0';
+}
+void expandArgs(char **input, int argc, char *output) {
+    char *out = output;     // Output pointer
+    // Para todo el texto
+    /**out++ = '"';*/
+
+    for (int i = 1; i < argc; i++) {
+      // Por cada token
+      const char *in = input[i]; // Input pointer
+      /**out++ = '\\';*/
+      /**out++ = '\'';*/
+      int counter = 0;
+      // Process each character in the input string
+      while (*in) {
+          // Por cada caracter
+          /*printf("%d: %c\n", ++counter, *in);*/
+          if (*in == '"') { // Escape double quotes
+              *out++ = '\\'; // Add the backslash
+              *out++ = '\"';  // Add the escaped double quote
+          } else if (*in == '\'') {
+              *out++ = '\\'; // Add the backslash
+              *out++ = '\''; // Add the backslash
+          } else if (*in == '\\') {
+              *out++ = '\\'; // Add the backslash
+              *out++ = '\\'; // Add the backslash
+          } else if (isspace((unsigned char)*in)) { // Handle spaces as argument separators
+              // Add a closing and opening double quote for separated arguments
+              *out++ = '\\';
+              *out++ = ' ';
+          } else {
+              *out++ = *in;  // Copy the character as-is
+          }
+          in++;
+        }
+      /**out++ = '\\';*/
+      /**out++ = '\''; */
+      *out++ = ' '; 
+
+    /**out++ = '"';*/
+      }
+
+    /**out++ = '"';*/
+    *out = '\0';
+
+    // Print the result
+    /*printf("%s\n", args_quotes);*/
+}
 
