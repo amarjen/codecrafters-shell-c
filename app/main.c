@@ -54,7 +54,6 @@ int main() {
     if (argc > 1) {
       join_str(args, 1024, s, argv);
       expandArgs(argv, argc, args_quotes);
-      // quoteStr(args_quotes);
     }
     else {
       args = NULL;
@@ -127,9 +126,16 @@ int main() {
 
     // EXECUTE COMMAND IN PATH
     else if ( inPath(cmd) != NULL ) {
-
       char* fullCommand = ecalloc(1, 100);
-      if (args_quotes != NULL) {
+      if (cmd != NULL) {
+
+        if (input[0] == '\"') {
+          quoteStr(cmd);
+        }
+        else if (input[0] == '\'') {
+          singlequoteStr(cmd);
+        } 
+
         snprintf(fullCommand, 100, "%s %s\n",cmd, args_quotes);
       }
       else {

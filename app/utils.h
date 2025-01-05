@@ -216,7 +216,8 @@ int parse_tokens(const char *input, char **tokens, int *token_count) {
     return 0;
 }
 
-void quoteStr(char *str) {
+void quoteStr(char *str)
+{
     size_t len = strlen(str);
 
     // Shift the string right to make space for the opening quote
@@ -228,50 +229,47 @@ void quoteStr(char *str) {
     str[len + 1] = '"';
     str[len + 2] = '\0';
 }
-void expandArgs(char **input, int argc, char *output) {
-    char *out = output;     // Output pointer
-    // Para todo el texto
-    /**out++ = '"';*/
 
+void singlequoteStr(char *str)
+{
+    size_t len = strlen(str);
+
+    // Shift the string right to make space for the opening quote
+    for (size_t i = len; i > 0; i--) {
+        str[i] = str[i - 1];
+    }
+
+    str[0] = '\'';
+    str[len + 1] = '\'';
+    str[len + 2] = '\0';
+}
+
+
+void expandArgs(char **input, int argc, char *output)
+{
+    char *out = output;     // Output pointer
     for (int i = 1; i < argc; i++) {
-      // Por cada token
       const char *in = input[i]; // Input pointer
-      /**out++ = '\\';*/
-      /**out++ = '\'';*/
       int counter = 0;
-      // Process each character in the input string
       while (*in) {
-          // Por cada caracter
-          /*printf("%d: %c\n", ++counter, *in);*/
-          if (*in == '"') { // Escape double quotes
-              *out++ = '\\'; // Add the backslash
-              *out++ = '\"';  // Add the escaped double quote
+          if (*in == '"') { 
+              *out++ = '\\'; 
+              *out++ = '\"';  
           } else if (*in == '\'') {
-              *out++ = '\\'; // Add the backslash
-              *out++ = '\''; // Add the backslash
+              *out++ = '\\'; 
+              *out++ = '\'';
           } else if (*in == '\\') {
-              *out++ = '\\'; // Add the backslash
-              *out++ = '\\'; // Add the backslash
-          } else if (isspace((unsigned char)*in)) { // Handle spaces as argument separators
-              // Add a closing and opening double quote for separated arguments
+              *out++ = '\\'; 
+              *out++ = '\\';
+          } else if (isspace((unsigned char)*in)) {
               *out++ = '\\';
               *out++ = ' ';
           } else {
-              *out++ = *in;  // Copy the character as-is
+              *out++ = *in;
           }
           in++;
         }
-      /**out++ = '\\';*/
-      /**out++ = '\''; */
       *out++ = ' '; 
-
-    /**out++ = '"';*/
       }
-
-    /**out++ = '"';*/
     *out = '\0';
-
-    // Print the result
-    /*printf("%s\n", args_quotes);*/
 }
-
