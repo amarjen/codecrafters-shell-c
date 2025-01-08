@@ -51,6 +51,7 @@ char* inPath(const char *command) {
 
   char* path = getenv("PATH");
   char *path_copy = strndup(path, strlen(path)); 
+  strcat(path_copy, ":.");
   const char split[2] = ":";
   struct stat file_stat;
   
@@ -84,20 +85,6 @@ void trim(char *s) {
     while (s[j++] = s[i++]);
 }
 
-int tokenize(char **tokens, char *str) {
-    char separator[2] = " ";
-    char* next_token;
-    tokens[0] = strtok(str, separator);
-    next_token = strtok(0, separator);
-    int i=1;
-    while (next_token != 0) {
-      tokens[i] = malloc(strlen(next_token)+1);
-      strcpy(tokens[i], next_token);
-      next_token = strtok(0, separator);
-      i++;
-    }
-    return i;
-}
 
 static char *util_cat(char *dest, char *end, const char *str)
 {
@@ -106,9 +93,9 @@ static char *util_cat(char *dest, char *end, const char *str)
     return dest;
 }
 
-size_t join_str(char *out_string, size_t out_bufsz, const char *delim, char **chararr)
+size_t join_str(char *out_string, size_t out_bufsz, char *delim, char **chararr)
 {
-    chararr++;
+    ++chararr; // skip first arg (executable filename)
     char *ptr = out_string;
     char *strend = out_string + out_bufsz;
     while (ptr < strend && *chararr)
@@ -124,7 +111,8 @@ size_t join_str(char *out_string, size_t out_bufsz, const char *delim, char **ch
 #define MAX_TOKENS 100 // Maximum number of tokens
 #define MAX_TOKEN_LEN 256 // Maximum token length
 
-int parse_tokens(const char *input, char **tokens, int *token_count) {
+int tokenize(const char *input, char **tokens, int *token_count) {
+    // Convierte input en tokens
     // https://www.gnu.org/software/bash/manual/bash.html#Quoting
     int is_escaped = 0;
     int in_single_quote = 0;
@@ -161,22 +149,17 @@ int parse_tokens(const char *input, char **tokens, int *token_count) {
              buffer[buffer_pos++] = next_c;
            } 
            else if (next_c != '$' ||  next_c != 'n') {
-             /*buffer[buffer_pos++] = c;*/
              buffer[buffer_pos++] = '\\';
              buffer[buffer_pos++] = next_c;
-             /**input++;*/
            }
            else {
-             *input--;
              buffer[buffer_pos++] = c;
-           /*is_escaped = 1;*/
            }
         }
 
         else if (c == '\\' && !in_single_quote && !in_double_quote) { // Escape character
             is_escaped = 1;
         }
-
 
         else if (isspace((unsigned char)c) && !in_single_quote && !in_double_quote) { // Token boundary
             if ( buffer_pos > 0) {
@@ -190,6 +173,11 @@ int parse_tokens(const char *input, char **tokens, int *token_count) {
                 }
             }
         }
+        // REDIRECT OPERATOR
+        /*else if (c=='>') {*/
+        /*  char file_descriptor = buffer[buffer_pos-1];*/
+        /*  buffer[buffer_pos++] = c;*/
+        /*}*/
 
         else { // Regular character
             buffer[buffer_pos++] = c;
@@ -214,6 +202,133 @@ int parse_tokens(const char *input, char **tokens, int *token_count) {
 
     *token_count = token_index;
     return 0;
+}
+
+void performExpansions(char **tokens, int token_count)
+{
+  for (int i=0;i<token_count;i++) {
+
+        if (!strcmp(tokens[i], "~")) {
+          strcpy(tokens[i], getenv("HOME"));
+        }
+  }
+}
+
+typedef struct {
+    char *command;         // Command name
+    char *args[MAX_ARGS + 1]; // Arguments + space for NULL
+    int argc;              // Argument count
+    int redirect_out_fd;   // File descriptor for `>` or `>>`
+    char *redirect_out;    // Output redirection file
+    int append_out;        // 1 for append (>>), 0 for overwrite (>)
+} Command;
+
+int parseCommand(char **tokens, int token_count, Command *cmd) {
+    if (token_count == 0) {
+        fprintf(stderr, "Error: Empty token list\n");
+        return -1;
+    }
+
+    memset(cmd, 0, sizeof(Command)); // Initialize the Command structure
+
+    // State 1: Parse command name
+    cmd->command = tokens[0];
+    cmd->argc = 0;
+
+    for (int i = 0; i < token_count; i++) {
+        char *token = tokens[i];
+
+        if (strcmp(token, ">") == 0 || strcmp(token, ">>") == 0 || (isdigit(token[0]) && (strcmp(token + 1, ">") == 0 || strcmp(token + 1, ">>") == 0))) {
+            // State 2: Parse redirection operator
+            int fd = isdigit(token[0]) ? token[0] - '0' : 1; // Default to stdout
+            int append = (strstr(token, ">>") != NULL);
+
+            if (i + 1 >= token_count) {
+                fprintf(stderr, "Error: Missing filename after redirection\n");
+                return -1;
+            }
+
+            cmd->redirect_out_fd = fd;
+            cmd->redirect_out = tokens[++i];
+            cmd->append_out = append;
+        } else {
+            // State 3: Parse arguments
+            if (cmd->argc >= MAX_ARGS) {
+                fprintf(stderr, "Error: Too many arguments\n");
+                return -1;
+            }
+            cmd->args[cmd->argc++] = token;
+        }
+    }
+
+    return 0; // Success
+}
+
+void printCommand(const Command *cmd) {
+    printf("Command: %s\n", cmd->command);
+    printf("Arguments (%d):\n", cmd->argc);
+    for (int i = 0; i < cmd->argc; i++) {
+        printf("  [%d]: %s\n", i, cmd->args[i]);
+    }
+
+    if (cmd->redirect_out) {
+        printf("Redirection:\n");
+        printf("  File descriptor: %d\n", cmd->redirect_out_fd);
+        printf("  File: %s\n", cmd->redirect_out);
+        printf("  Append: %s\n", cmd->append_out ? "Yes" : "No");
+    }
+}
+
+
+void executeCommand(Command *cmd) {
+    // Handle redirections
+    if (cmd->redirect_out) {
+        int flags = O_WRONLY | O_CREAT;
+        flags |= cmd->append_out ? O_APPEND : O_TRUNC; // Append or overwrite
+
+        int fd = open(cmd->redirect_out, flags, 0644);
+        if (fd == -1) {
+            perror("Error opening file for redirection");
+            exit(EXIT_FAILURE);
+        }
+
+        if (dup2(fd, cmd->redirect_out_fd) == -1) {
+            perror("Error redirecting output");
+            exit(EXIT_FAILURE);
+        }
+
+        close(fd); // Close the file descriptor after duplicating
+    }
+
+    // Null-terminate the arguments array for execvp
+    cmd->args[cmd->argc++] = NULL;
+
+    // Execute the command
+    /*printCommand(cmd);*/
+    // ECHO COMMAND
+
+
+    if (strcmp(cmd->command, "echo") == 0) {
+        for (int i = 1; i < cmd->argc-1; i++) {
+            printf("%s", cmd->args[i]);
+            if (i < cmd->argc - 1) {
+                printf(" ");
+            }
+        }
+        printf("\n");
+        // Flush stdout to ensure output is written immediately
+        exit(EXIT_SUCCESS);
+        return;
+    }
+
+ 
+    else {
+        int status_code = execvp(cmd->command, cmd->args);
+        if (status_code == -1) {
+            perror("Error executing command");
+            exit(EXIT_FAILURE);
+        }
+    }
 }
 
 void quoteStr(char *str)

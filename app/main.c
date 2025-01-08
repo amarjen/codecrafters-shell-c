@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 #include <sys/stat.h> 
 #include <sys/wait.h>
 #include <unistd.h>
@@ -27,14 +28,13 @@ int main() {
   char cd_command[]="cd";
 
   char s[2] = " ";
-  char quote[2] = "'";
+  char input[100];
 
   int running = 1;
   while (running) {
+    //1. Reads input
     printf(BHGRN "$ " CRESET);
 
-    // Wait for user input
-    char input[100];
     printf(CYN);
     fgets(input, 100, stdin);
     printf(CRESET);
@@ -42,82 +42,87 @@ int main() {
     if (input[0]=='\n') {continue;}
     input[strcspn(input, "\n")] = '\0';
 
-    char **argv = (char**)ecalloc(10, sizeof(char*));
+    char **tokens = (char**)ecalloc(10, sizeof(char*));
     char *args = ecalloc(8, 1024);
     char args_quotes[1024] = {0};
-    int argc = 0;
-    char cmd[256];
+    int token_count = 0;
  
-    parse_tokens(input, argv, &argc);
-    strcpy(cmd, argv[0]);
+    // 2. Break the input into tokens (words and operators)
+    tokenize(input, tokens, &token_count);
+    if (DEBUG) {
+      for (int i=0;i<token_count;i++) {
+        printf("Tk %d: %s\n", i, tokens[i]);
+      }
+    }
 
-    if (argc > 1) {
-      join_str(args, 1024, s, argv);
-      expandArgs(argv, argc, args_quotes);
+    performExpansions(tokens, token_count);
+
+    Command cmd;
+    parseCommand(tokens, token_count, &cmd);
+    if (DEBUG) {printCommand(&cmd);}
+
+
+    if (token_count > 1) {
+      join_str(args, 1024, " ", cmd.args);
+      expandArgs(tokens, token_count, args_quotes);
     }
     else {
       args = NULL;
       // args_quotes = NULL;
     }
 
-    if (DEBUG) {
-      for (int i=0; i<argc; i++) {
-        printf("argv %d: %s\n", i, argv[i]);
-      }
-      printf("cmd: %s\nargc: %d\nargs: %s\nargsq: %s\n---\n", cmd, argc, args,args_quotes);
-      }
+    if (DEBUG){
+      printf("args: %s\n", args);
+      printf("argsq: %s\n", args_quotes);
+    }
+
 
     // EXIT COMMAND
-    if (strcmp(cmd, exit_command) == 0) {
+    if (strcmp(cmd.command, exit_command) == 0) {
       running=0;
       break;
     }
 
-    // ECHO COMMAND
-    else if (strcmp(cmd, echo_command) == 0) {
-      if (args != NULL) {
-      printf("%s\n", args);
-
-      }
-      
-    }
-
+    // // ECHO COMMAND
+    // else if (strcmp(cmd.command, echo_command) == 0) {
+    //   if (args != NULL) {
+    //   printf("%s\n", args);
+    //   }
+    // }
+    //
     // TYPE COMMAND
-    else if (strcmp(cmd, type_command) == 0) {
-      if (argc == 0) {printf("You need to specify a command\n");
+    else if (strcmp(cmd.command, type_command) == 0) {
+      if (token_count == 0) {printf("You need to specify a command\n");
       }
       else {
 
-        if (inArray(argv[1], commands, commands_size) == 1) {
-           printf("%s is a shell builtin\n", argv[1]);
+        if (inArray(tokens[1], commands, commands_size) == 1) {
+           printf("%s is a shell builtin\n", tokens[1]);
            }
 
-        else if (inPath(argv[1]) != NULL) {
+        else if (inPath(tokens[1]) != NULL) {
            char* fp;
-           fp = inPath(argv[1]);
-           printf("%s is %s\n", argv[1], fp);
+           fp = inPath(tokens[1]);
+           printf("%s is %s\n", tokens[1], fp);
            free(fp);
       }
-        else { printf("%s: not found\n", argv[1]);}
+        else { printf("%s: not found\n", tokens[1]);}
       }   }
 
     // PWD COMMAND
-    else if (strcmp(cmd, pwd_command) == 0) {
+    else if (strcmp(cmd.command, pwd_command) == 0) {
       char cwd[1024];
       getcwd(cwd, sizeof(cwd));
       printf("%s\n",cwd);
     }
 
     // CD COMMAND
-    else if (strcmp(cmd, cd_command) == 0) {
-      if (argc == 0) {printf("You need to specify a directory\n");
+    else if (strcmp(cmd.command, cd_command) == 0) {
+      if (token_count == 0) { 
+        printf("You need to specify a directory\n");
       }
       else {
-        if (!strcmp(argv[1], "~")) {
-          strcpy(args, getenv("HOME"));
-        }
-
-        int result = chdir(args);
+        int result = chdir(cmd.args[1]);
         if ((result != 0) && (errno == ENOENT)) {
            printf("cd: %s: No such file or directory\n", args);
         }
@@ -125,46 +130,48 @@ int main() {
     }
 
     // EXECUTE COMMAND IN PATH
-    else if ( inPath(cmd) != NULL ) {
-      char* fullCommand = ecalloc(1, 100);
-      if (cmd != NULL) {
-
-        if (input[0] == '\"') {
-          quoteStr(cmd);
+    else if ( inPath(cmd.command) != NULL ) {
+    if (parseCommand(tokens, token_count, &cmd) == 0) {
+        pid_t pid = fork();
+        if (pid == 0) {
+            // Child process: Execute the command
+            executeCommand(&cmd);
+        } else if (pid > 0) {
+            // Parent process: Wait for the child to finish
+            wait(NULL);
+        } else {
+            perror("Error creating child process");
+            exit(EXIT_FAILURE);
         }
-        else if (input[0] == '\'') {
-          singlequoteStr(cmd);
-        } 
+    }
 
-        snprintf(fullCommand, 100, "%s %s\n",cmd, args_quotes);
-      }
-      else {
-        snprintf(fullCommand, 100, "%s\n",cmd);
-      }
-      int returnCode = system(fullCommand);
-      // pid_t pid = fork();
+      // char* fullCommand = ecalloc(1, 100);
       //
-      // if (pid == 0) { // child
+      // if ( args != NULL) {
       //
-      //   char *argsp[] = {cmd, NULL};
-      //   execvp(cmd, argsp);
+      //   if (input[0] == '\"') {
+      //     quoteStr(cmd.command);
+      //   }
+      //   else if (input[0] == '\'') {
+      //     singlequoteStr(cmd.command);
+      //   } 
       //
-      // } else { // parent
-      //
-      //   int status;
-      //   waitpid(pid, &status, 0);
-      //
-      //   printf("Child process finished\n");
+      //   snprintf(fullCommand, 1024, "%s %s\n",cmd.command, args_quotes);
       // }
-        free(fullCommand);
+      // else {
+      //   snprintf(fullCommand, 1024, "%s\n",cmd.command);
+      // }
+      // int returnCode = system(fullCommand);
+      //   free(fullCommand);
     }
 
     else {
       printf("%s: command not found\n", input);
     }
-
-    free(argv);
+    free(tokens);
     free(args);
-  }
+ 
+ }
+
   return 0;
 }
