@@ -47,30 +47,46 @@ int inArray(const char *str, const char *arr[], int size) {
   return 0; // Not Found
 }
 
+
+
 char* inPath(const char *command) {
-
-  char* path = getenv("PATH");
-  char *path_copy = strndup(path, strlen(path)); 
-  strcat(path_copy, ":.");
-  const char split[2] = ":";
-  struct stat file_stat;
-  
-  char *token;
-  token = strtok(path_copy, split);
-
-  while (token != NULL) {
-    char *fullpath = malloc(100);
-    snprintf(fullpath, 100, "%s/%s", token, command);
-
-    if ( (stat(fullpath, &file_stat) == 0) && (file_stat.st_mode & S_IXOTH )) {
-      free(path_copy);
-      return fullpath;
+    char *path = getenv("PATH");
+    if (!path) {
+        return NULL; // PATH environment variable not found
     }
-    token = strtok(NULL, split);
-    free(fullpath);
-  }
-  free(path_copy);
-  return NULL;
+
+    const char *split = ":";
+    struct stat file_stat;
+
+    char *path_copy = strdup(path); // Duplicate PATH for safe tokenization
+    if (!path_copy) {
+        return NULL; // Memory allocation failed
+    }
+
+    char *token = strtok(path_copy, split);
+    while (token != NULL) {
+        // Calculate the required size for fullpath dynamically
+        size_t fullpath_size = strlen(token) + strlen(command) + 2; // +2 for '/' and '\0'
+        char *fullpath = malloc(fullpath_size);
+        if (!fullpath) {
+            free(path_copy);
+            return NULL; // Memory allocation failed
+        }
+
+        snprintf(fullpath, fullpath_size, "%s/%s", token, command);
+
+        if ((stat(fullpath, &file_stat) == 0) && (file_stat.st_mode & S_IXOTH)) {
+            // Found the executable
+            free(path_copy);
+            return fullpath;
+        }
+
+        free(fullpath);
+        token = strtok(NULL, split);
+    }
+
+    free(path_copy);
+    return NULL; // Command not found in PATH
 }
 
 void trim(char *s) {
@@ -173,11 +189,6 @@ int tokenize(const char *input, char **tokens, int *token_count) {
                 }
             }
         }
-        // REDIRECT OPERATOR
-        /*else if (c=='>') {*/
-        /*  char file_descriptor = buffer[buffer_pos-1];*/
-        /*  buffer[buffer_pos++] = c;*/
-        /*}*/
 
         else { // Regular character
             buffer[buffer_pos++] = c;
@@ -202,6 +213,13 @@ int tokenize(const char *input, char **tokens, int *token_count) {
 
     *token_count = token_index;
     return 0;
+}
+
+void freeTokens(char **tokens, int token_count) {
+    for (int i = 0; i < token_count; i++) {
+        free(tokens[i]); // Free each token
+    }
+    free(tokens);
 }
 
 void performExpansions(char **tokens, int token_count)
@@ -360,31 +378,30 @@ void singlequoteStr(char *str)
 }
 
 
-void expandArgs(char **input, int argc, char *output)
-{
-    char *out = output;     // Output pointer
-    for (int i = 1; i < argc; i++) {
-      const char *in = input[i]; // Input pointer
-      int counter = 0;
-      while (*in) {
-          if (*in == '"') { 
-              *out++ = '\\'; 
-              *out++ = '\"';  
-          } else if (*in == '\'') {
-              *out++ = '\\'; 
-              *out++ = '\'';
-          } else if (*in == '\\') {
-              *out++ = '\\'; 
-              *out++ = '\\';
-          } else if (isspace((unsigned char)*in)) {
-              *out++ = '\\';
-              *out++ = ' ';
-          } else {
-              *out++ = *in;
-          }
-          in++;
-        }
-      *out++ = ' '; 
-      }
-    *out = '\0';
-}
+/*void expandArgs(char **input, int argc, char *output)*/
+/*{*/
+/*    char *out = output;     // Output pointer*/
+/*    for (int i = 1; i < argc; i++) {*/
+/*      const char *in = input[i]; // Input pointer*/
+/*      while (*in) {*/
+/*          if (*in == '"') { */
+/*              *out++ = '\\'; */
+/*              *out++ = '\"';  */
+/*          } else if (*in == '\'') {*/
+/*              *out++ = '\\'; */
+/*              *out++ = '\'';*/
+/*          } else if (*in == '\\') {*/
+/*              *out++ = '\\'; */
+/*              *out++ = '\\';*/
+/*          } else if (isspace((unsigned char)*in)) {*/
+/*              *out++ = '\\';*/
+/*              *out++ = ' ';*/
+/*          } else {*/
+/*              *out++ = *in;*/
+/*          }*/
+/*          in++;*/
+/*        }*/
+/*      *out++ = ' '; */
+/*      }*/
+/*    *out = '\0';*/
+/*}*/
